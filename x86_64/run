@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -e
 
 usage() {
   cat <<EOF >&2
-Usage: ${0##*/} <qcow2-path> <ssh-port>
+Usage: ${0##*/} <qcow2-path>
 Try '${0##*/} --help' for more details.
 EOF
   exit "${1:-2}"
@@ -13,24 +13,22 @@ EOF
 help() {
   cat <<'EOF'
 NAME
-  run - Boot an installed ARM64 qcow2 image with host SSH port forward
+  run - Boot an installed x86_64 qcow2 image
 
 SYNOPSIS
-  run <qcow2-path> <ssh-port>
+  run <qcow2-path>
 
 DESCRIPTION
-  Launches qemu-system-aarch64 with the given qcow2 disk image and forwards
-  host TCP <ssh-port> to the guest's port 22 for SSH access.
+  Launches qemu-system-x86_64 with the given qcow2 disk image.
 
 OPTIONS
   -h, --help            Show this help and exit
 
 ARGUMENTS
   <qcow2-path>          Path to the qcow2 disk image to boot
-  <ssh-port>            Host TCP port to forward to guest 22
 
 EXAMPLES
-  run ./qcow2s/debian12.qcow2 2222
+  run ./qcow2s/debian12.qcow2
 
 EXIT STATUS
   0  Success
@@ -39,24 +37,19 @@ EOF
   exit 0
 }
 
-# Parse options and positional args
-QCOW2_IMG=""
-while [ $# -gt 0 ]; do
+if [[ -n $1 ]]; then
   case "$1" in
     -h|--help) help ;;
-    --) shift; break ;;
     -*) echo "${0##*/}: unknown option: $1" >&2; usage ;;
-    *) QCOW2_IMG="$1"; shift; break ;;
   esac
-done
+  QCOW2_IMG_PATH=$1
+else
+  usage
+  exit 1
+fi
 
-[ -n "$QCOW2_IMG" ] || usage
-[ $# -ge 1 ] || usage
-SSH_PORT="$1"; shift
-[ $# -eq 0 ] || usage
-
-if [ ! -f "$QCOW2_IMG" ]; then
-  echo "./${0##*/}: couldn't read \`$QCOW2_IMG\`: No such file or directory"
+if [[ ! -f "$QCOW2_IMG_PATH" ]]; then
+  echo "./${0##*/}: couldn't read \`$QCOW2_IMG_PATH\`: No such file or directory" >/dev/stderr
   exit 1
 fi
 

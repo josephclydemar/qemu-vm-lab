@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+  cat <<EOF >&2
+Usage: ./${0##*/} <image-name> <iso-path>
+Try './${0##*/} --help' for more details.
+EOF
+  exit "${1:-2}"
+}
+
+help() {
+  cat <<'EOF'
+NAME
+  ./install - Create qcow2 and boot installer ISO in QEMU
+
+SYNOPSIS
+  ./install <image-name> <iso-path>
+
+DESCRIPTION
+  Creates a 20G qcow2 image at qcow2s/<image-name>.qcow2 and launches
+  qemu-system-x86_64 to install an OS from the provided ISO. This pairs with
+  fetch-iso (to download ISOs) and run (to boot installed images).
+
+OPTIONS
+  -h, --help            Show this help and exit
+
+ARGUMENTS
+  <image-name>          Base name for qcow2 (stored in qcow2s/)
+  <iso-path>            Path to the installer ISO to boot
+
+EXAMPLES
+  ./install debian12 ./isos/debian-12.6.0-arm64-netinst.iso
+
+EXIT STATUS
+  0  Success
+  2  Usage error (invalid args)
+EOF
+  exit 0
+}
+
+# Parse options and positional args
+IMG_NAME=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help) help ;;
+    --) shift; break ;;
+    -*) echo "${0##*/}: unknown option: $1" >&2; usage ;;
+    *) IMG_NAME="$1"; shift; break ;;
+  esac
+done
+
+[ -n "$IMG_NAME" ] || usage
+[ $# -ge 1 ] || usage
+ISO_PATH="$1"; shift
+[ $# -eq 0 ] || usage
+
+if [ ! -f "$ISO_PATH" ]; then
+  echo "./${0##*/}: couldn't read \`$ISO_PATH\`: No such file or directory"
+  exit 1
+fi
+
+QCOW2_IMG_PATH="qcow2s/${IMG_NAME}.qcow2"
+
+mkdir -p qcow2s
+set -x
+rm -f -- "$QCOW2_IMG_PATH"
+qemu-img create -f qcow2 "${QCOW2_IMG_PATH}" 20G
+qemu-system-x86_64 \
+  -enable-kvm \
+  -m 4G -cpu host -smp cores=4 \
+  -cdrom "${ISO_PATH}" \
+  -boot menu=on \
+  -drive format=qcow2,file="${QCOW2_IMG_PATH}"
+
+

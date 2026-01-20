@@ -1,2 +1,2 @@
-# QEMU ARM Lab
-A set of scripts for bootstrapping ARM emulators with QEMU.
+# QEMU VM Lab
+A set of scripts for setting up VMs with QEMU.

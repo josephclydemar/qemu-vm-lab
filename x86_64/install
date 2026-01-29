@@ -63,9 +63,13 @@ fi
 
 QCOW2_IMG_PATH="qcow2s/${IMG_NAME}.qcow2"
 
+if [ -f "$QCOW2_IMG_PATH" ]; then
+  echo "./${0##*/}: \`$QCOW2_IMG_PATH\`: already exist"
+  exit 1
+fi
+
 mkdir -p qcow2s
 set -x
-rm -f -- "$QCOW2_IMG_PATH"
 
 qemu-img create -f qcow2 "${QCOW2_IMG_PATH}" 20G
 qemu-system-x86_64 \

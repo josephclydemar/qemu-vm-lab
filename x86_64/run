@@ -59,5 +59,6 @@ qemu-system-x86_64 \
   -enable-kvm \
   -m 4G -cpu host -smp cores=4 \
   -boot menu=on \
-  -drive format=qcow2,file="${QCOW2_IMG_PATH}"
+  -drive format=qcow2,file="${QCOW2_IMG_PATH}" \
+  -monitor stdio
 

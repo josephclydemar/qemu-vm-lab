@@ -66,11 +66,11 @@ QCOW2_IMG_PATH="qcow2s/${IMG_NAME}.qcow2"
 mkdir -p qcow2s
 set -x
 rm -f -- "$QCOW2_IMG_PATH"
-qemu-img create -f qcow2 "${QCOW2_IMG_PATH}" 20G
+qemu-img create -f qcow2 "${QCOW2_IMG_PATH}" 4G
 qemu-system-aarch64 \
   -cpu cortex-a53 -smp cores=4 \
   -nographic \
-  -M virt -m 4096 \
+  -M virt -m 2G \
   -bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd \
   -drive format=qcow2,file="${QCOW2_IMG_PATH}" \
   -device ramfb \

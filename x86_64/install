@@ -19,7 +19,7 @@ SYNOPSIS
   ./install <image-name> <iso-path>
 
 DESCRIPTION
-  Creates a 20G qcow2 image at qcow2s/<image-name>.qcow2 and launches
+  Creates a 24G qcow2 image at qcow2s/<image-name>.qcow2 and launches
   qemu-system-x86_64 to install an OS from the provided ISO. This pairs with
   fetch-iso (to download ISOs) and run (to boot installed images).
 
@@ -41,45 +41,45 @@ EOF
 }
 
 # Parse options and positional args
-IMG_NAME=""
+img_name=""
 while [ $# -gt 0 ]; do
   case "$1" in
     -h|--help) help ;;
     --) shift; break ;;
     -*) echo "${0##*/}: unknown option: $1" >&2; usage ;;
-    *) IMG_NAME="$1"; shift; break ;;
+    *) img_name="$1"; shift; break ;;
   esac
 done
 
-[ -n "$IMG_NAME" ] || usage
+[ -n "$img_name" ] || usage
 [ $# -ge 1 ] || usage
-ISO_PATH="$1"; shift
+iso_path="$1"; shift
 [ $# -eq 0 ] || usage
 
-if [ ! -f "$ISO_PATH" ]; then
-  echo "./${0##*/}: couldn't read \`$ISO_PATH\`: No such file or directory"
+if [ ! -f "$iso_path" ]; then
+  echo "./${0##*/}: couldn't read \`$iso_path\`: No such file or directory"
   exit 1
 fi
 
-QCOW2_IMG_PATH="qcow2s/${IMG_NAME}.qcow2"
+qcow2_img_path="qcow2s/${img_name}.qcow2"
 
-if [ -f "$QCOW2_IMG_PATH" ]; then
-  echo "./${0##*/}: \`$QCOW2_IMG_PATH\`: already exist"
+if [ -f "$qcow2_img_path" ]; then
+  echo "./${0##*/}: \`$qcow2_img_path\`: already exist"
   exit 1
 fi
 
 mkdir -p qcow2s
 set -x
 
-qemu-img create -f qcow2 "${QCOW2_IMG_PATH}" 24G
+qemu-img create -f qcow2 "${qcow2_img_path}" 24G
 qemu-system-x86_64 \
   -enable-kvm \
   -m 4G -cpu host -smp cores=4 \
   -audiodev pa,id=snd0 \
   -device ich9-intel-hda \
   -device hda-output,audiodev=snd0 \
-  -cdrom "${ISO_PATH}" \
+  -cdrom "${iso_path}" \
   -boot menu=on \
-  -drive format=qcow2,file="${QCOW2_IMG_PATH}"
+  -drive format=qcow2,file="${qcow2_img_path}"
 
 

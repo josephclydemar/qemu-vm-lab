@@ -62,6 +62,5 @@ qemu-system-x86_64 \
   -device ich9-intel-hda \
   -device hda-output,audiodev=snd0 \
   -boot menu=on \
-  -drive format=qcow2,file="${qcow2_img_path}" \
-  -monitor stdio
+  -drive format=qcow2,file="${qcow2_img_path}"
 

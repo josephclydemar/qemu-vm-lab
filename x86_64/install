@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -e
 
 usage() {
   cat <<EOF >&2
-Usage: ./${0##*/} <image-name> <iso-path>
+Usage: ./${0##*/} <vm-name> <iso-path>
 Try './${0##*/} --help' for more details.
 EOF
   exit "${1:-2}"
@@ -16,18 +16,17 @@ NAME
   ./install - Create qcow2 and boot installer ISO in QEMU
 
 SYNOPSIS
-  ./install <image-name> <iso-path>
+  ./install <vm-name> <iso-path>
 
 DESCRIPTION
-  Creates a 24G qcow2 image at qcow2s/<image-name>.qcow2 and launches
-  qemu-system-x86_64 to install an OS from the provided ISO. This pairs with
-  fetch-iso (to download ISOs) and run (to boot installed images).
+  Creates a 24G qcow2 vm at qcow2s/<vm-name>.qcow2 and launches
+  qemu-system-x86_64 to install an OS from the provided ISO.
 
 OPTIONS
   -h, --help            Show this help and exit
 
 ARGUMENTS
-  <image-name>          Base name for qcow2 (stored in qcow2s/)
+  <vm-name>          Base name for qcow2 (stored in qcow2s/)
   <iso-path>            Path to the installer ISO to boot
 
 EXAMPLES
@@ -40,38 +39,73 @@ EOF
   exit 0
 }
 
-# Parse options and positional args
-img_name=""
-while [ $# -gt 0 ]; do
-  case "$1" in
-    -h|--help) help ;;
-    --) shift; break ;;
-    -*) echo "${0##*/}: unknown option: $1" >&2; usage ;;
-    *) img_name="$1"; shift; break ;;
-  esac
-done
+if [[ -z "$1" ]]; then
+  echo FIRST
+  usage
+fi
+case "$1" in
+  -h|--help) help ;;
+  -*) echo "${0##*/}: unknown option: $1" >&2; usage ;;
+esac
 
-[ -n "$img_name" ] || usage
-[ $# -ge 1 ] || usage
-iso_path="$1"; shift
-[ $# -eq 0 ] || usage
+if [[ -z "$2" ]]; then
+  echo SECOND
+  usage
+  exit 1
+fi
+if [[ -z "$3" ]]; then
+  echo THIRD
+  usage
+  exit 1
+fi
+
+vm_name="$1"
+iso_path="$2"
+drive_sizes="$3"
+drive_sizes_arg_pattern='^([0-9]+G)([[:space:]][0-9]+G)*$'
+
+if [[ $# -lt 3 ]]; then
+  echo Hello
+  usage
+  exit 1
+fi
 
 if [ ! -f "$iso_path" ]; then
   echo "./${0##*/}: couldn't read \`$iso_path\`: No such file or directory"
   exit 1
 fi
 
-qcow2_img_path="qcow2s/${img_name}.qcow2"
+vm_dir_path="qcow2s/${vm_name}"
+rm -rf $vm_dir_path || true
+mkdir -p $vm_dir_path || true
 
-if [ -f "$qcow2_img_path" ]; then
-  echo "./${0##*/}: \`$qcow2_img_path\`: already exist"
+if [[ ! "$drive_sizes" =~ $drive_sizes_arg_pattern ]]; then
+  echo "ERROR: 3rd arg must be like \`24G 64G 8G\`"
   exit 1
 fi
 
-mkdir -p qcow2s
-set -x
+if [[ $(wc -w <<< "$drive_sizes") -gt 3 ]]; then
+  echo "ERROR: 3rd arg must be less than or equal to 3"
+  exit 1
+fi
 
-qemu-img create -f qcow2 "${qcow2_img_path}" 24G
+drive_count=1
+for drive_size in $drive_sizes; do
+  qcow2_img_path="qcow2s/${vm_name}/drive${drive_count}.qcow2"
+  if [ -f "$qcow2_img_path" ]; then
+    echo "./${0##*/}: \`$qcow2_img_path\`: already exist" >/dev/stderr
+    exit 1
+  fi
+
+  set -x
+  qemu-img create -f qcow2 "${qcow2_img_path}" $drive_size
+  set +x
+  ((drive_count++))
+done
+
+drives_flags=$(find ${vm_dir_path}/* -type f | xargs -n1 bash -c 'echo "-drive format=qcow2,file=$0"' | tr '\n' ' ')
+
+set -x
 qemu-system-x86_64 \
   -enable-kvm \
   -m 4G -cpu host -smp cores=4 \
@@ -80,6 +114,5 @@ qemu-system-x86_64 \
   -device hda-output,audiodev=snd0 \
   -cdrom "${iso_path}" \
   -boot menu=on \
-  -drive format=qcow2,file="${qcow2_img_path}"
-
+  ${drives_flags}
 

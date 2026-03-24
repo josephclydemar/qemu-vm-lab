@@ -42,19 +42,19 @@ if [[ -n $1 ]]; then
     -h|--help) help ;;
     -*) echo "${0##*/}: unknown option: $1" >&2; usage ;;
   esac
-  qcow2_img_path=$1
+  vm_dir_path=$1
+  if [[ ! -d "$vm_dir_path" ]]; then
+    echo "./${0##*/}: couldn't read \`$vm_dir_path\`: VM does not exist" >/dev/stderr
+    exit 1
+  fi
 else
   usage
   exit 1
 fi
 
-if [[ ! -f "$qcow2_img_path" ]]; then
-  echo "./${0##*/}: couldn't read \`$qcow2_img_path\`: No such file or directory" >/dev/stderr
-  exit 1
-fi
+drives_flags=$(find ${vm_dir_path}/* -type f | xargs -n1 bash -c 'echo "-drive format=qcow2,file=$0"' | tr '\n' ' ')
 
 set -x
-
 qemu-system-x86_64 \
   -enable-kvm \
   -m 4G -cpu host -smp cores=4 \
@@ -62,5 +62,5 @@ qemu-system-x86_64 \
   -device ich9-intel-hda \
   -device hda-output,audiodev=snd0 \
   -boot menu=on \
-  -drive format=qcow2,file="${qcow2_img_path}"
+  ${drives_flags}
 

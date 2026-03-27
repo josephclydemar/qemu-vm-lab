@@ -13,26 +13,31 @@ EOF
 help() {
   cat <<'EOF'
 NAME
-  run - Boot an installed x86_64 qcow2 image
+  run - Boot an installed x86_64 VM from qcow2 disks
 
 SYNOPSIS
-  run <qcow2-path>
+  run <vm-dir>
 
 DESCRIPTION
-  Launches qemu-system-x86_64 with the given qcow2 disk image.
+  Launches qemu-system-x86_64 to boot a VM using the qcow2 disk images 
+  stored in the specified VM directory.
+
+  - VM directory should contain one or more qcow2 disk images.
+  - Disk images will be added in alphabetical order as QEMU drives.
 
 OPTIONS
   -h, --help            Show this help and exit
 
 ARGUMENTS
-  <qcow2-path>          Path to the qcow2 disk image to boot
+  <vm-dir>              Path to the VM directory containing qcow2 disk images
 
 EXAMPLES
-  run ./qcow2s/debian12.qcow2
+  run ./qcow2s/debian12
 
 EXIT STATUS
   0  Success
-  2  Usage error (invalid args)
+  1  Invalid VM directory or missing disks
+  2  Usage error (missing arguments)
 EOF
   exit 0
 }
@@ -52,7 +57,7 @@ else
   exit 1
 fi
 
-drives_flags=$(find ${vm_dir_path}/* -type f | xargs -n1 bash -c 'echo "-drive format=qcow2,file=$0"' | tr '\n' ' ')
+qemu_vm_disk_args=$(find ${vm_dir_path} -type f | sort | xargs -n1 bash -c 'echo "-drive format=qcow2,file=$0"' | tr '\n' ' ')
 
 set -x
 qemu-system-x86_64 \
@@ -62,5 +67,5 @@ qemu-system-x86_64 \
   -device ich9-intel-hda \
   -device hda-output,audiodev=snd0 \
   -boot menu=on \
-  ${drives_flags}
+  ${qemu_vm_disk_args}
 

@@ -4,7 +4,7 @@ set -e
 
 usage() {
   cat <<EOF >&2
-Usage: ./${0##*/} <vm-name> <iso-path>
+Usage: ./${0##*/} <vm-name> <iso-path> <disk-sizes>
 Try './${0##*/} --help' for more details.
 EOF
   exit "${1:-2}"
@@ -13,34 +13,39 @@ EOF
 help() {
   cat <<'EOF'
 NAME
-  ./install - Create qcow2 and boot installer ISO in QEMU
+  ./install - Create qcow2 virtual disks and boot installer ISO in QEMU
 
 SYNOPSIS
-  ./install <vm-name> <iso-path>
+  ./install <vm-name> <iso-path> <disk-sizes>
 
 DESCRIPTION
-  Creates a 24G qcow2 vm at qcow2s/<vm-name>.qcow2 and launches
-  qemu-system-x86_64 to install an OS from the provided ISO.
+  Creates qcow2 virtual disks for a VM and launches qemu-system-x86_64 
+  to install an OS from the provided ISO.
+
+  - VM directory is created at qcow2s/<vm-name>/
+  - Disk images are named disk1.qcow2, disk2.qcow2, etc.
+  - Maximum of 3 disks supported.
 
 OPTIONS
   -h, --help            Show this help and exit
 
 ARGUMENTS
-  <vm-name>          Base name for qcow2 (stored in qcow2s/)
+  <vm-name>             Base name for VM (used to create qcow2s/<vm-name>/)
   <iso-path>            Path to the installer ISO to boot
+  <disk-sizes>          Space for each disk (e.g., "24G 64G 8G")
 
 EXAMPLES
-  ./install debian12 ./isos/debian.iso
+  ./install debian12 ./isos/debian.iso "24G 64G 8G"
 
 EXIT STATUS
   0  Success
-  2  Usage error (invalid args)
+  1  Invalid argument or file not found
+  2  Usage error (missing arguments)
 EOF
   exit 0
 }
 
 if [[ -z "$1" ]]; then
-  echo FIRST
   usage
 fi
 case "$1" in
@@ -49,23 +54,20 @@ case "$1" in
 esac
 
 if [[ -z "$2" ]]; then
-  echo SECOND
   usage
   exit 1
 fi
 if [[ -z "$3" ]]; then
-  echo THIRD
   usage
   exit 1
 fi
 
 vm_name="$1"
 iso_path="$2"
-drive_sizes="$3"
-drive_sizes_arg_pattern='^([0-9]+G)([[:space:]][0-9]+G)*$'
+vm_disk_sizes="$3"
+vm_disk_sizes_rgx='^([0-9]+G)([[:space:]][0-9]+G)*$'
 
 if [[ $# -lt 3 ]]; then
-  echo Hello
   usage
   exit 1
 fi
@@ -79,31 +81,31 @@ vm_dir_path="qcow2s/${vm_name}"
 rm -rf $vm_dir_path || true
 mkdir -p $vm_dir_path || true
 
-if [[ ! "$drive_sizes" =~ $drive_sizes_arg_pattern ]]; then
+if [[ ! "$vm_disk_sizes" =~ $vm_disk_sizes_rgx ]]; then
   echo "ERROR: 3rd arg must be like \`24G 64G 8G\`"
   exit 1
 fi
 
-if [[ $(wc -w <<< "$drive_sizes") -gt 3 ]]; then
+if [[ $(wc -w <<< "$vm_disk_sizes") -gt 3 ]]; then
   echo "ERROR: 3rd arg must be less than or equal to 3"
   exit 1
 fi
 
-drive_count=1
-for drive_size in $drive_sizes; do
-  qcow2_img_path="qcow2s/${vm_name}/drive${drive_count}.qcow2"
-  if [ -f "$qcow2_img_path" ]; then
-    echo "./${0##*/}: \`$qcow2_img_path\`: already exist" >/dev/stderr
+vm_disk_index=1
+for drive_size in $vm_disk_sizes; do
+  vm_disk_path="qcow2s/${vm_name}/drive${vm_disk_index}.qcow2"
+  if [ -f "$vm_disk_path" ]; then
+    echo "./${0##*/}: \`$vm_disk_path\`: already exist" >/dev/stderr
     exit 1
   fi
 
   set -x
-  qemu-img create -f qcow2 "${qcow2_img_path}" $drive_size
+  qemu-img create -f qcow2 "${vm_disk_path}" $drive_size
   set +x
-  ((drive_count++))
+  ((vm_disk_index++))
 done
 
-drives_flags=$(find ${vm_dir_path}/* -type f | xargs -n1 bash -c 'echo "-drive format=qcow2,file=$0"' | tr '\n' ' ')
+qemu_vm_disk_args=$(find ${vm_dir_path} -type f | sort | xargs -n1 bash -c 'echo "-drive format=qcow2,file=$0"' | tr '\n' ' ')
 
 set -x
 qemu-system-x86_64 \
@@ -114,5 +116,5 @@ qemu-system-x86_64 \
   -device hda-output,audiodev=snd0 \
   -cdrom "${iso_path}" \
   -boot menu=on \
-  ${drives_flags}
+  ${qemu_vm_disk_args}
 

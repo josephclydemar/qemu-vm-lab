@@ -65,15 +65,14 @@ fi
 vm_name="$1"
 iso_path="$2"
 vm_disk_sizes="$3"
-vm_disk_sizes_rgx='^([0-9]+G)([[:space:]][0-9]+G)*$'
 
 if [[ $# -lt 3 ]]; then
   usage
   exit 1
 fi
 
-if [ ! -f "$iso_path" ]; then
-  echo "./${0##*/}: couldn't read \`$iso_path\`: No such file or directory"
+if [[ ! -f "$iso_path" ]]; then
+  echo "./${0##*/}: couldn't read \`$iso_path\`: No such file or directory" >/dev/stderr
   exit 1
 fi
 
@@ -81,26 +80,26 @@ vm_dir_path="qcow2s/${vm_name}"
 rm -rf $vm_dir_path || true
 mkdir -p $vm_dir_path || true
 
-if [[ ! "$vm_disk_sizes" =~ $vm_disk_sizes_rgx ]]; then
-  echo "ERROR: 3rd arg must be like \`24G 64G 8G\`"
+if [[ ! "$vm_disk_sizes" =~ ^([0-9]+G)([[:space:]][0-9]+G)*$ ]]; then
+  echo "ERROR: 3rd arg must be like \`24G 64G 8G\`" >/dev/stderr
   exit 1
 fi
 
 if [[ $(wc -w <<< "$vm_disk_sizes") -gt 3 ]]; then
-  echo "ERROR: 3rd arg must be less than or equal to 3"
+  echo "ERROR: 3rd arg must be less than or equal to 3" >/dev/stderr
   exit 1
 fi
 
 vm_disk_index=1
-for drive_size in $vm_disk_sizes; do
-  vm_disk_path="qcow2s/${vm_name}/drive${vm_disk_index}.qcow2"
-  if [ -f "$vm_disk_path" ]; then
+for disk_size in $vm_disk_sizes; do
+  vm_disk_path="qcow2s/${vm_name}/disk${vm_disk_index}.qcow2"
+  if [[ -f "$vm_disk_path" ]]; then
     echo "./${0##*/}: \`$vm_disk_path\`: already exist" >/dev/stderr
     exit 1
   fi
 
   set -x
-  qemu-img create -f qcow2 "${vm_disk_path}" $drive_size
+  qemu-img create -f qcow2 "${vm_disk_path}" $disk_size
   set +x
   ((vm_disk_index++))
 done

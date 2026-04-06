@@ -52,7 +52,7 @@ if [[ -n $1 ]]; then
     echo "./${0##*/}: couldn't read \`$vm_dir_path\`: VM does not exist" >/dev/stderr
     exit 1
   fi
-  if [[ ! "$vm_dir_path" =~ ^[^/]+/[^/]+$ ]]; then
+  if [[ ! "$vm_dir_path" =~ ^[^/]+/[^/]+/?$ ]]; then
     echo "ERROR: VM directory path incorrect format." >/dev/stderr
     exit 1
   fi

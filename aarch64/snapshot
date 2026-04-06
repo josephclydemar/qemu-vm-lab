@@ -68,18 +68,18 @@ apply_snapshot() {
 }
 
 
-if [ -n "$action" ]; then
+if [[ -n "$action" ]]; then
   case "$action" in
     -h|--help) help ;;
     --list)
-        if [ ! -f "$2" ]; then
+        if [[ ! -f "$2" ]]; then
           usage
         fi
         list_snapshots "$2"
       ;;
     --create)
-        if [ -n "$2" ]; then
-          if [ ! -f "$3" ]; then
+        if [[ -n "$2" ]]; then
+          if [[ ! -f "$3" ]]; then
             echo "./${0##*/}: couldn't read \`$3\`: No such file or directory" >/dev/stderr
             exit 1
           fi
@@ -89,8 +89,8 @@ if [ -n "$action" ]; then
         fi
       ;;
     --delete)
-        if [ -n "$2" ]; then
-          if [ ! -f "$3" ]; then
+        if [[ -n "$2" ]]; then
+          if [[ ! -f "$3" ]]; then
             echo "./${0##*/}: couldn't read \`$3\`: No such file or directory" >/dev/stderr
             exit 1
           fi
@@ -100,8 +100,8 @@ if [ -n "$action" ]; then
         fi
       ;;
     --apply)
-        if [ -n "$2" ]; then
-          if [ ! -f "$3" ]; then
+        if [[ -n "$2" ]]; then
+          if [[ ! -f "$3" ]]; then
             echo "./${0##*/}: couldn't read \`$3\`: No such file or directory" >/dev/stderr
             exit 1
           fi
